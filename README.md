@@ -1,6 +1,6 @@
 # SemaforosIA
 
-##Librerias a instalar
+## Librerias a instalar
 - numpy
 - opencv-python
 - torch
@@ -9,4 +9,4 @@
 - Pillow
 - setuptools
 
-##Adjuntar el video a la carpeta data (no se puede subir a github por su peso)
+## Adjuntar el video a la carpeta data (no se puede subir a github por su peso)
