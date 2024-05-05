@@ -67,6 +67,7 @@ def detector():
         if vehicle_count > 4:
             print("Más de 4 vehículos detectados. Agregando tiempo...")
 
+        print(vehicle_count)
         cv2.imshow('Frame', frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):

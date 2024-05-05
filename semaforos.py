@@ -8,23 +8,72 @@ import time
 # Carga el modelo YOLOv5
 model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
 
+detection_area = [(880, 200), (615, 750), (1370, 750), (1080, 200)]
+
+def point_inside_polygon(x, y, poly):
+    #Verifica si un punto está dentro de un polígono. 
+    n = len(poly)
+    inside = False
+
+    p1x, p1y = poly[0]
+    for i in range(n+1):
+        p2x, p2y = poly[i % n]
+        if y > min(p1y, p2y):
+            if y <= max(p1y, p2y):
+                if x <= max(p1x, p2x):
+                    if p1y != p2y:
+                        xints = (y-p1y) * (p2x-p1x) / (p2y-p1y) + p1x
+                    if p1x == p2x or x <= xints:
+                        inside = not inside
+        p1x, p1y = p2x, p2y
+
+    return inside
+
+def draw_poly(frame, poly):
+    # Dibuja un polígono en el frame 
+    pts = np.array(poly, np.int32)
+    pts = pts.reshape((-1, 1, 2))
+    cv2.polylines(frame, [pts], isClosed=True, color=(255, 0, 0), thickness=2)
+
 # Función para procesar el video y detectar vehículos
 def process_video(semaphore_state, vehicle_count_lock, stop_event, model):
-    cap = cv2.VideoCapture('data/video1.mp4')  # Ruta del video
+    cap = cv2.VideoCapture("data/video1.mp4")  # Cambiar al video de entrada
+    
     while cap.isOpened() and not stop_event.is_set():
         ret, frame = cap.read()
         if not ret:
             break
-        
+
+        # Dibuja el área de detección
+        draw_poly(frame, detection_area)
+
+        # Realiza detección usando YOLOv5
         results = model(frame)
-        
-        vehicle_count = sum(1 for *_, conf, cls in results.xyxy[0] if cls in [2, 3, 5, 7] and conf > 0.5)
-        
+        detections = results.xyxy[0].numpy()
+
+        # Filtra detecciones por clase de vehículo y confianza
+        vehicles = [det for det in detections if det[5] in [2, 3, 5, 7] and det[4] > 0.4]
+
+        # Contar vehículos dentro de la región de detección
+        vehicle_count = 0
+        for *xyxy, conf, cls in vehicles:
+            x_center = (xyxy[0] + xyxy[2]) / 2
+            y_center = (xyxy[1] + xyxy[3]) / 2
+            if point_inside_polygon(x_center, y_center, detection_area):
+                vehicle_count += 1
+                # Dibuja los bounding boxes de los vehículos detectados dentro de la región
+                cv2.rectangle(frame, (int(xyxy[0]), int(xyxy[1])), (int(xyxy[2]), int(xyxy[3])), (0, 255, 0), 2)
+
         with vehicle_count_lock:
             semaphore_state["vehicle_count"] = vehicle_count
+
+        print(vehicle_count)
         
-        time.sleep(0.1)  
-    
+        cv2.imshow('Frame', frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
     cap.release()
 
 # Función para manejar la lógica de semáforos
@@ -48,7 +97,7 @@ def semaphore_logic(semaphore_labels, semaphore_state, vehicle_count_lock, stop_
         with vehicle_count_lock:
             vehicle_count = semaphore_state["vehicle_count"]
 
-        if vehicle_count > 3 and semaphore1_time <= 5 and semaphore1_state == "green" and semaphore1_extra_count < 3:
+        if vehicle_count > 2 and semaphore1_time <= 5 and semaphore1_state == "green" and semaphore1_extra_count < 3:
             extra_time = 5
             semaphore1_extra_count += 1
         else:
