@@ -97,7 +97,7 @@ def semaphore_logic(semaphore_labels, semaphore_state, vehicle_count_lock, stop_
         with vehicle_count_lock:
             vehicle_count = semaphore_state["vehicle_count"]
 
-        if vehicle_count > 2 and semaphore1_time <= 5 and semaphore1_state == "green" and semaphore1_extra_count < 3:
+        if vehicle_count > 1 and semaphore1_time <= 5 and semaphore1_state == "green" and semaphore1_extra_count < 3:
             extra_time = 5
             semaphore1_extra_count += 1
         else:
@@ -105,25 +105,33 @@ def semaphore_logic(semaphore_labels, semaphore_state, vehicle_count_lock, stop_
 
         semaphore1_time -= 1
         semaphore2_time -= 1
-        semaphore3_time = semaphore1_time
-        semaphore3_state = semaphore1_state
+        semaphore3_time -= 1
         semaphore4_time -= 1
         semaphore5_time -= 1
-        semaphore6_time = semaphore1_time
-        semaphore6_state = semaphore1_state
+        semaphore6_time -= 1
 
         semaphore1_time += extra_time
         semaphore2_time += extra_time
+        semaphore3_time += extra_time
         semaphore4_time += extra_time
         semaphore5_time += extra_time
+        semaphore6_time += extra_time
 
         if semaphore1_time <= 0:
             if semaphore1_state == "green":
                 semaphore1_state = "yellow"
+                semaphore3_state = "yellow"
+                semaphore6_state = "yellow"
                 semaphore1_time = yellow_duration
+                semaphore3_time = yellow_duration
+                semaphore6_time = yellow_duration
             elif semaphore1_state == "yellow":
                 semaphore1_state = "red"
                 semaphore1_time = 23
+                semaphore3_state = "red"
+                semaphore3_time = 23
+                semaphore6_state = "red"
+                semaphore6_time = 23
                 semaphore2_state = "green"
                 semaphore4_state = "green"
                 semaphore5_state = "green"
@@ -133,7 +141,11 @@ def semaphore_logic(semaphore_labels, semaphore_state, vehicle_count_lock, stop_
             else:
                 semaphore1_state = "green"
                 semaphore1_time = 20
-                semaphore1_extra_count = 0 
+                semaphore3_state = "green"
+                semaphore3_time = 20
+                semaphore6_state = "green"
+                semaphore6_time = 20
+                semaphore1_extra_count = 0
 
         if semaphore2_time <= 0:
             if semaphore2_state == "green":
